@@ -1,5 +1,4 @@
-
-//To register all routes
+//Index route to include all your user router files
 module.exports = (app) => {
-    require("./user_roures")(app);
+    require("./user_routes")(app);
 };

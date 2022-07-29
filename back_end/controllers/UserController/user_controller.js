@@ -1,10 +1,9 @@
-const User = require("../db/models/UserModels/user_models")
+const { Users } = require("../../db/models/index_models")
 
-
-//To insert records into a user table
+//To insert records into user table
 exports.insert = async (req, res) => {
     try {
-        let insert = new User(req.body)
+        let insert = new Users(req.body)
         var response = await insert.save(req.body)
         res.status(201).send({
             status: 200,
@@ -23,10 +22,11 @@ exports.insert = async (req, res) => {
     }
 }
 
-exports.getData = async (req, res) => {
+//To get data from users table based on user id
+exports.getUserData = async (req, res) => {
     try {
-        let whereCond = { _id: req.params.id }
-        var response = await User.findOne(whereCond)
+        let whereCond = { _id: req.params.user_id }
+        var response = await Users.findOne(whereCond)
         res.status(201).send({
             status: 200,
             error: false,

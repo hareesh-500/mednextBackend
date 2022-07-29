@@ -1,5 +1,6 @@
 var crypt = require('crypto');
 
+//This function is used to encript given string
 exports.encrypt = (encryptStr) => {
     try {
         var key = crypt.createCipher(process.env.DBDATA_ACCESS_KEY, process.env.DBDATA_PASSWORD_KEY);
@@ -11,6 +12,7 @@ exports.encrypt = (encryptStr) => {
     }
 }
 
+//This function is used to decript given string
 exports.decrypt = (decryptStr) => {
     var key = crypt.createDecipher(process.env.DBDATA_ACCESS_KEY, process.env.DBDATA_PASSWORD_KEY);
     var decrypted_str = key.update(decryptStr, 'hex', 'utf8')

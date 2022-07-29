@@ -122,6 +122,7 @@ userSchema.methods.generateAuthToken = async function () {
 userSchema.pre("save", async function (next) {
     const user = this;
     var e = {};
+    //To check is password contains numbers,alphabets and special charectors
     if (user.isModified("password")) {
         if (
             !/^(?=.*\d)(?=.*[a-zA-Z])(?=.*[~!@#$%^&*./])[\da-zA-Z~!@#$%^&*./]{6,16}$/.test(
@@ -133,6 +134,7 @@ userSchema.pre("save", async function (next) {
             throw e;
         }
 
+        //Encripting user data before saving into db
         const salt = await bcrypt.genSalt();
         let hashedPassword = await bcrypt.hash(user.password, salt);
         user.password = hashedPassword;
@@ -195,7 +197,6 @@ userSchema.post("findOne", function (userData) {
 
 //checking unique fields validations
 userSchema.post("save", function (error, doc, next) {
-    console.log("error.code..", error.code, error)
     if (error.code === 11000 && Object.keys(error.keyValue)[0] === 'user_name') {
         next(new Error('User name already exist'));
     } else if (error.code === 11000 && Object.keys(error.keyValue)[0] === 'email') {
