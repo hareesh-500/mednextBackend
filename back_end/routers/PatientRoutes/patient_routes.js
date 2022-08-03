@@ -2,11 +2,14 @@ module.exports = (app) => {
     var router = require("express").Router();
     let user_controller = require("../../controllers/PtientController/patient_controller")
 
-    //To insert patient symptoms
-    router.post("/insert_symptoms", user_controller.insertSymptoms)
+    //To save patient relatives
+    router.post("/save_patients", user_controller.savePatients)
 
-    //Finding patient symptoms by using appointment id
-    router.get("/get_symptoms/:appointment_id", user_controller.getSymptomsByappointmentId)
+    //To save patient appointment
+    router.post("/save_appointment", user_controller.saveAppointment)
+
+    //To get appointment data
+    router.get("/get_appointment/:appointment_id", user_controller.getAppointment)
 
     app.use("/api/patient", router);
 };
