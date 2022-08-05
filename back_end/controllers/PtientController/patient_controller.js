@@ -1,4 +1,4 @@
-const { Patients, PatientIntakeProcess, PatientAppointments, AppointmentTransactions, MasterSymptoms } = require("../../db/models/index_models")
+const { Patients, PatientIntakeProcess, PatientAppointments, AppointmentTransactions, MasterSymptoms, MasterProducts } = require("../../db/models/index_models")
 const mongoose = require('mongoose')
 const toId = mongoose.Types.ObjectId
 
@@ -17,7 +17,7 @@ exports.savePatients = async (req, res) => {
         })
     } catch (e) {
         Logger.error(
-            `patient_controller - getSymptomsByappointmentId - lineno-41, Error: ${e}`
+            `patient_controller - getSymptomsByappointmentId - lineno-19, Error: ${e}`
         );
         res.status(400).send({
             status: 400,
@@ -35,7 +35,7 @@ const saveIntakeProcess = async (reqData) => {
         return response
     } catch (e) {
         Logger.error(
-            `patient_controller - saveIntakeProcess - lineno-114, Error: ${e}`
+            `patient_controller - saveIntakeProcess - lineno-37, Error: ${e}`
         );
         throw e
     }
@@ -87,9 +87,8 @@ exports.saveAppointment = async (req, res) => {
         })
     } catch (e) {
         Logger.error(
-            `patient_controller - saveAppointment - lineno-67, Error: ${e}`
+            `patient_controller - saveAppointment - lineno-89, Error: ${e}`
         );
-        console.log("appointmentResponse._id", appointmentResponse._id)
         if (appointmentResponse) await PatientAppointments.findOneAndRemove({ _id: appointmentResponse._id })
         res.status(400).send({
             status: 400,
@@ -100,75 +99,85 @@ exports.saveAppointment = async (req, res) => {
 
 }
 
-
+//To get appointment data
 exports.getAppointment = async (req, res) => {
-
-    // let response = await PatientIntakeProcess.find({ appointment_id: req.params.appointment_id }).populate({ path: 'related_medication', select: 'medicine_name' }).exec();
-    console.log("response..", req.params.appointment_id)
-
-    let response = await PatientAppointments.aggregate([
-        {
-            $match: { '_id': { $eq: toId(req.params.appointment_id) } }
-        },
-        {
-            $lookup:
+    try {
+        let response = await PatientAppointments.aggregate([
             {
-                from: PatientIntakeProcess.collection.name,
-                localField: "_id",
-                foreignField: "appointment_id",
-                as: "intakedata"
+                $match: { '_id': { $eq: toId(req.params.appointment_id) } }
             },
-        },
-        { $unwind: "$intakedata[0].symptoms" },
-        {
-            "$lookup": {
-                "from": MasterSymptoms.collection.name,
-                "let": { "symptom_id": "$intakedata.symptoms" },
-                "pipeline": [
-                    { "$unwind": "$_id" },
-                    { "$match": { "$expr": { "$eq": ["$$symptom_id", "$_id"] } } }
-                ],
-                "as": "item"
-            }
-        },
-        // {
-        //     $lookup:
-        //     {
-        //         from: MasterSymptoms.collection.name,
-        //         localField: "intakedata.symptoms",
-        //         foreignField: "_id",
-        //         as: "sym"
-        //     },
-        // },
-        {
-            $lookup:
             {
-                from: AppointmentTransactions.collection.name,
-                localField: "_id",
-                foreignField: "appointment_id",
-                as: "transactionData"
-            }
-        }
-    ])
-    // , {
-    //         path: 'symptoms',
-    //         // match: { age: { $gte: 21 } },
-    //         // // Explicitly exclude `_id`, see http://bit.ly/2aEfTdB
-    //         // select: 'name -_id'
-    //     }, {
-    //         path: 'related_medication',
-    //         // match: { age: { $gte: 21 } },
-    //         // // Explicitly exclude `_id`, see http://bit.ly/2aEfTdB
-    //         // select: 'name -_id'
-    //     }, {
-    //         path: 'drug_allergies',
-    //         // match: { age: { $gte: 21 } },
-    //         // // Explicitly exclude `_id`, see http://bit.ly/2aEfTdB
-    //         // select: 'name -_id'
-    //     }).
-    res.status(201).send({
-        status: 200,
-        error: false,
-        data: response[0]
-    })
+                $lookup:
+                {
+                    from: Patients.collection.name,
+                    localField: "patient_id",
+                    foreignField: "_id",
+                    as: "patient"
+                },
+            },
+            {
+                $lookup:
+                {
+                    from: PatientIntakeProcess.collection.name,
+                    localField: "_id",
+                    foreignField: "appointment_id",
+                    as: "intakedata"
+                },
+            },
+            {
+                $lookup:
+                {
+                    from: MasterSymptoms.collection.name,
+                    localField: "intakedata.symptoms",
+                    foreignField: "_id",
+                    as: "symptoms"
+                },
+            },
+            {
+                $lookup:
+                {
+                    from: MasterProducts.collection.name,
+                    localField: "intakedata.related_medication",
+                    foreignField: "_id",
+                    as: "related_medication"
+                },
+            },
+            {
+                $lookup:
+                {
+                    from: MasterProducts.collection.name,
+                    localField: "intakedata.drug_allergies",
+                    foreignField: "_id",
+                    as: "drug_allergies"
+                },
+            },
+            {
+                $lookup:
+                {
+                    from: AppointmentTransactions.collection.name,
+                    localField: "_id",
+                    foreignField: "appointment_id",
+                    as: "transactionData"
+                }
+            },
+            { $unset: ["intakedata.symptoms", "intakedata.long_term_illness", "intakedata.related_medication", "intakedata.drug_allergies", "intakedata.appointment_id", "transactionData.appointment_id", "createdAt", "updatedAt", "patient.createdAt", "patient.updatedAt"] },
+            {
+                $project: { "patient": 1, "symptoms._id": 1, "symptoms.description": 1, "intakedata": 1, "transactionData": 1, "related_medication._id": 1, "related_medication.medicine_id": 1, "related_medication.medicine_name": 1, "drug_allergies._id": 1, "drug_allergies.medicine_id": 1, "drug_allergies.medicine_name": 1 }
+            },
+        ])
+        res.status(201).send({
+            status: 200,
+            error: false,
+            data: response[0]
+        })
+    } catch (e) {
+        Logger.error(
+            `patient_controller - getAppointment - lineno-164, Error: ${e}`
+        );
+        res.status(400).send({
+            status: 400,
+            error: true,
+            errorMsg: e.message
+        })
+    }
 }

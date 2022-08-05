@@ -26,7 +26,7 @@ exports.insert = async (req, res) => {
 exports.getUserData = async (req, res) => {
     try {
         let whereCond = { _id: req.params.user_id }
-        var response = await Users.findOne(whereCond)
+        var response = await Users.findOne(whereCond).select(['-password'])
         res.status(201).send({
             status: 200,
             error: false,

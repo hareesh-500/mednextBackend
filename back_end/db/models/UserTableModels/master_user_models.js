@@ -44,13 +44,6 @@ const userSchema = new mongoose.Schema({
         minlength: [6, "password contains at least 6 letters"],
         maxlength: [16, "password contains max of 16 charectors"],
         required: [true, "password required"],
-        // validate: {
-        //     validator: function (password) {
-        //         if (password == "0") return true;
-        //         return validator.isAlphanumeric(password);
-        //     },
-        //     message: (props) => `${props.value} password contains alphabets,numbers,special charectors`,
-        // },
         trim: true,
     },
     otp: {
@@ -65,11 +58,11 @@ const userSchema = new mongoose.Schema({
         required: [true, "otp expire time required"],
         trim: true,
     },
-    role: {
+    role: [{
         type: String,
         required: [true, "role required"],
         trim: true,
-    },
+    }],
     status: {
         type: Boolean,
         required: [true, "status required"],
@@ -208,12 +201,6 @@ userSchema.post("save", function (error, doc, next) {
     }
 })
 
-// function getter(value) {
-//     return cipher.decrypt(value)
-// }
 const Users = mongoose.model("users", userSchema);
-// userSchema.set("toObject", { getters: true });
-// userSchema.set("toJSON", { getters: true });
-
 
 module.exports = Users;
