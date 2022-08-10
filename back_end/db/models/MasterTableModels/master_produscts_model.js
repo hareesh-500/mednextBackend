@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+require('mongoose-double')(mongoose);
+const SchemaTypes = mongoose.Schema.Types;
 
 const masterProductsSchema = new mongoose.Schema({
     medicine_id: {
@@ -29,12 +31,12 @@ const masterProductsSchema = new mongoose.Schema({
         trim: true,
     },
     price_to_stocklist: {
-        type: String,
+        type: SchemaTypes.Double,
         default: null,
         trim: true,
     },
     mrp: {
-        type: Number,
+        type: SchemaTypes.Double,
         required: [true, "MRP required"],
         trim: true,
     },
@@ -44,7 +46,7 @@ const masterProductsSchema = new mongoose.Schema({
         trim: true,
     },
     price_to_retail: {
-        type: Number,
+        type: SchemaTypes.Double,
         default: 0,
         trim: true,
     },
@@ -54,7 +56,7 @@ const masterProductsSchema = new mongoose.Schema({
         trim: true,
     },
     goods_price_to_retail: {
-        type: Number,
+        type: SchemaTypes.Double,
         default: 0,
         trim: true,
     },

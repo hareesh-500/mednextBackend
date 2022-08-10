@@ -1,7 +1,9 @@
 const mongoose = require("mongoose");
+const Users = require("../UserTableModels/master_user_model")
 const validator = require("validator");
+const cipher = require("../../../helpers/cipher")
 const Schema = mongoose.Schema
-const Users = require("../UserTableModels/master_user_models")
+
 const patientSchema = new Schema({
     user_id: {
         type: Schema.Types.ObjectId, ref: 'users',
@@ -61,12 +63,16 @@ patientSchema.pre("save", async function (next) {
     var e = {};
     try {
         //To check given symptom ids are vailable or not in master_symptoms table
-        console.log("Users..", Users)
         let usersCount = await Users.count({ _id: { $in: patient.user_id } })
         if (!usersCount) {
             e.message = "User id not available in master table"
             throw e
         } else {
+            patient.phone_number = cipher.encrypt(patient.phone_number);
+            patient.email = cipher.encrypt(patient.email);
+            patient.name = cipher.encrypt(patient.name);
+            patient.gender = cipher.encrypt(patient.gender);
+            patient.relation = cipher.encrypt(patient.relation);
             next()
         }
     } catch (err) {

@@ -1,16 +1,16 @@
 const mongoose = require("mongoose");
+const Schema = mongoose.Schema
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const cipher = require("../../../helpers/cipher")
 
-const userSchema = new mongoose.Schema({
+const userSchema = new Schema({
     name: {
         type: String,
         required: [true, "name required"],
         minlength: [3, "name contains at least 3 letters"],
         trim: true,
     },
-
     email: {
         type: String,
         unique: true,
@@ -37,6 +37,16 @@ const userSchema = new mongoose.Schema({
         },
         required: [true, "phone number required"],
         default: 0,
+        trim: true,
+    },
+    dob: {
+        type: Date,
+        required: [true, "DOB required"],
+        trim: true,
+    },
+    gender: {
+        type: String,
+        required: [true, "Gender required"],
         trim: true,
     },
     password: {
@@ -111,7 +121,7 @@ userSchema.methods.generateAuthToken = async function () {
 //     //return user;
 // };
 
-// mongoose middleware
+// mongoose middleware to invoke, before data saving into db
 userSchema.pre("save", async function (next) {
     const user = this;
     var e = {};
@@ -135,10 +145,29 @@ userSchema.pre("save", async function (next) {
         user.email = cipher.encrypt(user.email);
         user.name = cipher.encrypt(user.name);
         user.otp = cipher.encrypt(user.otp);
-        user.role = cipher.encrypt(user.role);
+        user.gender = cipher.encrypt(user.gender);
+        let roles = []
+        user.role.forEach((item) => roles.push(cipher.encrypt(item)))
+        user.role = roles
     }
     next();
 });
+
+//Middleware to invoke, after data saved into db 
+userSchema.post("save", async function (userData) {
+    //To check if role is customer or not 
+    if (userData.role.includes("8d21cc7ddc404ca26bdf0e2f2453bbf6")) {
+        let { _id, name, email, phone_number, dob, gender } = userData
+        let patientData = { user_id: userData._id, name: cipher.decrypt(name), email: cipher.decrypt(email), phone_number: cipher.decrypt(phone_number), dob: dob, gender: cipher.decrypt(gender), relation: "self" }
+        try {
+            let patients = new Patient(patientData)
+            var response = await patients.save(patientData)
+        } catch (e) {
+            throw e
+        }
+    }
+});
+
 userSchema.pre("insertMany", async function (next, userData) {
     var e = {};
     userData.map(function (item) {
@@ -169,7 +198,9 @@ userSchema.post("findOne", function (userData) {
         userData.email = cipher.decrypt(userData.email);
         userData.name = cipher.decrypt(userData.name);
         userData.otp = cipher.decrypt(userData.otp);
-        userData.role = cipher.decrypt(userData.role);
+        let roles = []
+        userData.role.forEach((item) => roles.push(cipher.decrypt(item)))
+        userData.role = roles;
     } catch (err) {
         Logger.error(`users.model - userSchema.post - lineno-207, Error: ${err}`);
     }
@@ -204,3 +235,6 @@ userSchema.post("save", function (error, doc, next) {
 const Users = mongoose.model("users", userSchema);
 
 module.exports = Users;
+
+//Due to circula dependency we need to require patient file after users exports
+const Patient = require("../PatientModels/patient_model")

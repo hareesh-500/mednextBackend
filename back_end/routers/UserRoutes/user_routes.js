@@ -8,5 +8,8 @@ module.exports = (app) => {
     //To get data from users table based on user id
     router.get("/get_data/:user_id", user_controller.getUserData);
 
+    //To save user address
+    router.post("/save_address", user_controller.saveAddress)
+
     app.use("/api/users", router);
 };

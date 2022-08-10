@@ -1,4 +1,4 @@
-const { Patients, PatientIntakeProcess, PatientAppointments, AppointmentTransactions, MasterSymptoms, MasterProducts } = require("../../db/models/index_models")
+const { Patients, PatientIntakeProcess, PatientAppointments, AppointmentTransactions, MasterSymptoms, MasterProducts, PatientHelthprofile } = require("../../db/models/index_models")
 const mongoose = require('mongoose')
 const toId = mongoose.Types.ObjectId
 
@@ -173,6 +173,33 @@ exports.getAppointment = async (req, res) => {
     } catch (e) {
         Logger.error(
             `patient_controller - getAppointment - lineno-164, Error: ${e}`
+        );
+        res.status(400).send({
+            status: 400,
+            error: true,
+            errorMsg: e.message
+        })
+    }
+}
+
+//To save patient helth profile
+exports.saveHelthProfile = async (req, res) => {
+    try {
+        let patientHelthprofile = ""
+        if (req.body.id) {
+            patientHelthprofile = await PatientHelthprofile.findOneAndUpdate({ _id: req.body.id }, req.body, { new: true });
+        } else {
+            patientHelthprofile = new PatientHelthprofile(req.body)
+            var response = await patientHelthprofile.save(req.body)
+        }
+        res.status(201).send({
+            status: 200,
+            error: false,
+            message: "Helth profile saved successfully"
+        })
+    } catch (e) {
+        Logger.error(
+            `patient_controller - saveHelthProfile - lineno-197, Error: ${e}`
         );
         res.status(400).send({
             status: 400,

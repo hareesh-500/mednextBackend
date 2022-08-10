@@ -11,5 +11,8 @@ module.exports = (app) => {
     //To get appointment data
     router.get("/get_appointment/:appointment_id", user_controller.getAppointment)
 
+    //To save patient helth profile
+    router.post("/save_helth_profile", user_controller.saveHelthProfile)
+
     app.use("/api/patient", router);
 };
