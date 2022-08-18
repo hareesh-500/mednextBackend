@@ -11,5 +11,11 @@ module.exports = (app) => {
     //To save user address
     router.post("/save_address", user_controller.saveAddress)
 
+    //To verify user otp
+    router.post("/verify_otp", user_controller.verifyOtp)
+
+    //To resend user otp
+    router.post("/resend_otp", user_controller.resendOtp)
+
     app.use("/api/users", router);
 };
