@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema
 const validator = require("validator");
 const cipher = require("../../../helpers/cipher")
+const Constants = require("../../../../constants")
 
 const userSchema = new Schema({
     phone_number: {
@@ -32,7 +33,7 @@ const userSchema = new Schema({
             },
             message: (props) => `${props.reason.message}`,
         },
-        required: [true, "phone number required"],
+        required: [true, "Email required"],
         default: 0,
         trim: true,
     },
@@ -65,7 +66,8 @@ const userSchema = new Schema({
             },
             createdAt: {
                 type: String,
-                required: true,
+                default: Date.now() + Constants.TOKEN_EXP * 24 * 60 * 60 * 1000,
+
             },
             timezone: {
                 type: String,
@@ -82,7 +84,8 @@ userSchema.pre("save", async function (next, err) {
     user.phone_number = cipher.encrypt(user.phone_number);
     user.email = cipher.encrypt(user.email);
     user.otp = cipher.encrypt(user.otp);
-    user.role.concat(user.role)
+    let role = cipher.encrypt(user.role[0])
+    user.role[0] = role
     next();
 });
 

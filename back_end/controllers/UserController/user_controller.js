@@ -3,23 +3,71 @@ const generateOtp = require("../../helpers/generateOtp")
 const moment = require('moment-timezone')
 const Constants = require("../../../constants")
 const cipher = require("../../helpers/cipher")
+const Email = require("../../helpers/emails")
+const Jwt = require("../../config/Jwt")
 
 //To insert records into user table
 exports.insert = async (req, res) => {
     try {
-
         req.body.otp = generateOtp.generate(6)
         req.body.otp_exp_time = moment().add(Constants.OTP_EXPTIME, 'minutes').format('YYYY-MM-DD LTS')
         let users = new Users(req.body)
         var response = await users.save(req.body)
+        Email.sendEmail(req.body.email, "Sign Up Verification", `use ${req.body.otp} to verify your registration`)
         res.status(201).send({
             status: 200,
             error: false,
-            data: `Data successfully inserted into User table`
+            message: `Registration successfull Otp will be sent to ur registered email id`
         })
     } catch (e) {
         Logger.error(
-            `user_login.controller - insert - lineno-33, Error: ${e}`
+            `user_controller - insert - lineno-23, Error: ${e}`
+        );
+        res.status(400).send({
+            status: 400,
+            error: true,
+            errorMsg: e.message
+        })
+    }
+}
+
+//To login user
+exports.login = async (req, res) => {
+    try {
+        if (!req.body.user_name || !req.body.role) {
+            let e = {}
+            e.message = "user_name and role required"
+            throw e
+        }
+        let username = req.body.user_name
+        let userRole = req.body.role
+        let encryptUsername = cipher.encrypt(username)
+        const user = await Users.findOne({ "$or": [{ phone_number: encryptUsername }, { email: encryptUsername }] })
+        //checking user registered or not
+        if (!user) res.status(401).send({ status: 401, error: true, message: "User not registered with us" });
+
+        //checking user credentials
+        else if (!user.role.includes(userRole)) res.status(401).send({ status: 401, error: true, message: "Invalid login or password." });
+
+        else {
+            //To set otp
+            let updateData = {
+                otp: generateOtp.generate(6),
+                otp_exp_time: moment().add(Constants.OTP_EXPTIME, 'minutes').format('YYYY-MM-DD LTS')
+            }
+            let userId = encryptUsername
+            await Users.findOneAndUpdate({ $or: [{ email: userId }, { phone_number: userId }] }, updateData, { new: true });
+
+            Email.sendEmail(username, "Login Verification", `use ${updateData.otp} to verify your Login`)
+            res.status(200).send({
+                status: 200,
+                error: false,
+                message: `Login successfull Otp will be sent to your email id`
+            })
+        }
+    } catch (e) {
+        Logger.error(
+            `user_controller - login - lineno-67, Error: ${e}`
         );
         res.status(400).send({
             status: 400,
@@ -42,7 +90,7 @@ exports.getUserData = async (req, res) => {
         })
     } catch (e) {
         Logger.error(
-            `user_login.controller - insert - lineno-33, Error: ${e}`
+            `user_controller - getUserData - lineno-90, Error: ${e}`
         );
         res.status(400).send({
             status: 400,
@@ -69,7 +117,7 @@ exports.saveAddress = async (req, res) => {
         })
     } catch (e) {
         Logger.error(
-            `user_login.controller - saveAddress - lineno-65, Error: ${e}`
+            `user_controller - saveAddress - lineno-117, Error: ${e}`
         );
         res.status(400).send({
             status: 400,
@@ -88,15 +136,21 @@ exports.verifyOtp = async (req, res) => {
             throw e
         }
         let userId = cipher.encrypt(req.body.user_id)
-        var response = await Users.findOne({ $or: [{ email: userId }, { phone_number: userId }] })
+        let userRole = cipher.encrypt(req.body.role)
+        var response = await Users.findOne({
+            $and: [
+                { $or: [{ email: userId }, { phone_number: userId }] },
+                { $and: [{ role: { $in: [userRole] } }] }
+            ]
+        })
         let otp = ""
         let otpExp = ""
         let isOtpExpired = ""
+        let token = ""
         let isOtpVerified = false
         let responseMessage = ""
         if (response) {
             otp = cipher.decrypt(response.otp)
-            console.log("otp...", otp)
             otpExp = response.otp_exp_time
             isOtpVerified = otp === req.body.otp
             isOtpExpired = new Date(otpExp).getTime() > new Date().getTime()
@@ -106,22 +160,27 @@ exports.verifyOtp = async (req, res) => {
                 isOtpVerified = false
                 responseMessage = `OTP expired`
             } else {
+                let userDetails = { _id: response._id, role: req.body.role, timezone: req.body.timezone }
+                let tokenData = await Jwt.genTokens(userDetails)
+                token = tokenData.data.accessToken
                 responseMessage = `OTP verified successfully`
             }
         } else {
-            responseMessage = "User not found"
+            let e = {}
+            e.message = "User not found"
+            throw e
         }
         res.status(201).send({
             status: 200,
             error: false,
+            token: token,
             isOtpVerified: isOtpVerified,
             message: `${responseMessage}`
         })
     } catch (e) {
         Logger.error(
-            `user_login.controller - insert - lineno-33, Error: ${e}`
+            `user_controller - verifyOtp - lineno-181, Error: ${e}`
         );
-        console.log("e....", e)
         res.status(400).send({
             status: 400,
             error: true,
@@ -145,9 +204,12 @@ exports.resendOtp = async (req, res) => {
         let userId = cipher.encrypt(req.body.user_id)
         var response = await Users.findOneAndUpdate({ $or: [{ email: userId }, { phone_number: userId }] }, updateData, { new: true });
         if (response) {
+            Email.sendEmail(req.body.user_id, "Sign Up Verification", `use ${updateData.otp} to verify your registration`)
             responseMessage = `OTP sent successfully`
         } else {
-            responseMessage = "User not found"
+            let e = {}
+            e.message = "User not found"
+            throw e
         }
         res.status(201).send({
             status: 200,
@@ -156,7 +218,7 @@ exports.resendOtp = async (req, res) => {
         })
     } catch (e) {
         Logger.error(
-            `user_login.controller - insert - lineno-33, Error: ${e}`
+            `user_controller - resendOtp - lineno-220, Error: ${e}`
         );
         res.status(400).send({
             status: 400,
@@ -164,4 +226,14 @@ exports.resendOtp = async (req, res) => {
             errorMsg: e.message
         })
     }
+}
+
+//To check Token is valid
+exports.verifyToken = async (req, res) => {
+    res.status(200).send({
+        status: 200,
+        error: false,
+        isTokenVerified: true,
+        data: `Token verified successfully`
+    })
 }
